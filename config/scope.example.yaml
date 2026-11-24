@@ -1,0 +1,26 @@
+# Copiar a ~/.config/kensei/scope.yaml (o pasar --scope).
+# Este ejemplo refleja el alcance global autorizado de la instalación Ronin.
+# Sin authorized: true, Kensei rechaza todo comando de red.
+engagement: "global-authorized"
+authorized: true
+
+# Targets permitidos: todo IPv4/IPv6 y cualquier dominio.
+# El guard de comandos destructivos sigue activo; esto solo define el alcance.
+targets:
+  cidrs:
+    - "0.0.0.0/0"
+    - "::/0"
+  domains:
+    - "*"
+  urls: []
+
+# Denegación explícita: gana sobre targets. Vacío = sin exclusiones.
+deny:
+  cidrs: []
+  domains: []
+
+# Notas para el operador (no se usan para decidir, se muestran en auditoría).
+notes: |
+  Alcance global autorizado por el operador.
+  Usar solo contra sistemas propios o con autorización escrita.
+  Kensei mantiene el bloqueo de comandos destructivos y el modo dry-run.

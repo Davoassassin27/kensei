@@ -1,0 +1,324 @@
+# Q&A curado sobre Ronin. Hechos tomados de README.md, PROJECT.md y docs/.
+# Mantener respuestas cortas y verificables; si algo cambia en el repo, actualizar acá.
+- id: ronin-que-es
+  user: "¿Qué es Ronin y en qué se diferencia de un CachyOS normal?"
+  assistant: |
+    Ronin es un sistema Linux portable basado en **CachyOS** (kernel `linux-cachyos`, repos `x86-64-v3`) con **Omarchy** como overlay de escritorio (Hyprland, teclado/terminal first). La diferencia no es el branding: es la disciplina de construcción.
+
+    - Se arma en QEMU sobre una imagen `.img`, no con el instalador interactivo.
+    - Usa `systemd-boot` con ruta extraíble (`EFI/BOOT/BOOTX64.EFI`).
+    - No tiene swap física: usa `zram` al 50 % con zstd.
+    - `hw-adapt.service` detecta hardware en cada boot y aplica perfil/GPU.
+    - Todo paso tiene script, log y verificación.
+
+    Fuente: `README.md`, `PROJECT.md`, `docs/01-ARCHITECTURE.md`.
+  tags: [ronin, arquitectura]
+
+- id: ronin-hw-adapt
+  user: "¿Qué hace exactamente hw-adapt.service en Ronin?"
+  assistant: |
+    Corre antes del display manager y hace tres cosas:
+
+    1. **Detecta** placa, CPU, RAM, batería, GPUs y VRAM.
+    2. **Aplica** perfil de energía (`performance` en desktop, `balanced` en notebook con batería) y variables de GPU en `/etc/profile.d/ai-gpu-env.sh` y `~/.config/hypr/hardware-auto.lua`.
+    3. **Registra** en `/var/log/hw-adapt.log` y `/var/log/hw-adapt-last.json`.
+
+    Si cambia el `board_name` respecto del boot anterior, limpia estados huérfanos de Bluetooth/audio y reindexa interfaces. Verificá con:
+
+    ```bash
+    systemctl status hw-adapt
+    jq '{board,cpu,gpus,profile}' /var/log/hw-adapt-last.json
+    ```
+
+    Fuente: `PROJECT.md`, `docs/01-ARCHITECTURE.md`.
+  tags: [ronin, hw-adapt, systemd]
+
+- id: ronin-zram
+  user: "¿Ronin usa swap? ¿Cómo está configurada la memoria?"
+  assistant: |
+    No hay partición swap. Ronin usa **zram** con compresión **zstd** al **50 % de la RAM física**, vía `zram-generator`. La idea es absorber picos de Python/Docker/LLMs sin castigar el NVMe.
+
+    ```bash
+    zramctl
+    swapon --show
+    cat /etc/systemd/zram-generator.conf
+    ```
+
+    Si `swapon --show` no muestra el zram, revisá `systemctl status systemd-zram-setup@zram0.service`.
+
+    Fuente: `PROJECT.md`, `README.md`.
+  tags: [ronin, zram, memoria]
+
+- id: ronin-subvolumes
+  user: "¿Qué subvolúmenes Btrfs crea Ronin y con qué opciones se montan?"
+  assistant: |
+    Seis subvolúmenes sobre `CACHY_ROOT`:
+
+    | Subvolumen | Punto de montaje |
+    | --- | --- |
+    | `@` | `/` |
+    | `@home` | `/home` |
+    | `@var_cache` | `/var/cache` |
+    | `@var_log` | `/var/log` |
+    | `@docker` | `/var/lib/docker` |
+    | `@snapshots` | `/.snapshots` |
+
+    Opciones base: `noatime,compress=zstd:3,ssd,discard=async,space_cache=v2`. A `@docker` se le aplica `chattr +C` (nodatacow) para no degradar capas de contenedores.
+
+    ```bash
+    findmnt -no SOURCE,OPTIONS /
+    sudo btrfs subvolume list /
+    ```
+
+    Fuente: `PROJECT.md`, `docs/01-ARCHITECTURE.md`.
+  tags: [ronin, btrfs, storage]
+
+- id: ronin-boot
+  user: "¿Cómo bootea Ronin en hardware distinto sin romper el arranque?"
+  assistant: |
+    Con tres decisiones:
+
+    1. **Bootloader extraíble:** `systemd-boot` en la ruta estándar `EFI/BOOT/BOOTX64.EFI`.
+    2. **Initramfs universal:** incluye `uas`, `usb_storage`, `nvme`, `xhci_pci`, `ahci`, `amdgpu`, `i915`, `xe`, `nouveau`; no usa `autodetect` para no recortar módulos de la otra máquina.
+    3. **Montaje por UUID:** `/etc/fstab` y `root=UUID=...` usan UUIDs reales.
+
+    Verificación:
+
+    ```bash
+    ls -l /boot/EFI/BOOT/BOOTX64.EFI
+    grep -E 'uas|usb_storage|nvme|amdgpu' /etc/mkinitcpio.conf
+    sudo mkinitcpio -P
+    ```
+
+    Fuente: `PROJECT.md`, `docs/01-ARCHITECTURE.md`.
+  tags: [ronin, boot, initramfs]
+
+- id: ronin-usb-nvme
+  user: "¿Qué parámetro evita que el NVMe USB-C se desconecte en Ronin?"
+  assistant: |
+    `usbcore.autosuspend=-1` en los parámetros del kernel. Evita que el ahorro de energía USB suspenda el disco externo.
+
+    ```bash
+    cat /proc/cmdline | tr ' ' '\n' | grep usbcore
+    ```
+
+    Si falta, agregalo en la línea `GRUB_CMDLINE_LINUX_DEFAULT` o en la entrada de `systemd-boot` y regenerá el bootloader.
+
+    Fuente: `PROJECT.md`, `README.md`.
+  tags: [ronin, usb, kernel]
+
+- id: ronin-omarchy
+  user: "¿Por qué Ronin no usa el instalador de Omarchy?"
+  assistant: |
+    Porque el instalador de Omarchy 4.5 aborta explícitamente en CachyOS y exige Limine. Ronin integra Omarchy como **overlay**: instala el paquete `omarchy`, enlaza `/usr/share/omarchy`, configura SDDM/Hyprland y usa `hardware-auto.lua` para el hardware dinámico.
+
+    Además, se desactivaron los drop-ins de `mkinitcpio` de Omarchy (`00-omarchy-hooks.conf`, `omarchy_hooks.conf`, `omarchy_vconsole.conf`) porque reemplazaban los HOOKS universales y pedían `btrfs-overlayfs`.
+
+    Fuente: `README.md`, `docs/05-ADRS.md#adr-001`, `docs/08-BUILD-LOG.md`.
+  tags: [ronin, omarchy, hyprland]
+
+- id: ronin-ollama
+  user: "¿Dónde corre Ollama en Ronin y cómo lo verifico?"
+  assistant: |
+    Ollama escucha **solo local** en `127.0.0.1:11434`; los modelos viven en `~/ai-models/ollama`. El unit de fábrica usa `ProtectHome=yes`, así que Ronin lo reemplazó por `ProtectHome=read-only` + `ReadWritePaths`.
+
+    ```bash
+    systemctl status ollama
+    curl -s http://127.0.0.1:11434/api/tags | jq
+    findmnt -T ~/ai-models/ollama
+    ```
+
+    Fuente: `docs/01-ARCHITECTURE.md`, `docs/08-BUILD-LOG.md`.
+  tags: [ronin, ollama, ai]
+
+- id: ronin-verificacion
+  user: "¿Cómo sé que una instalación de Ronin quedó sana?"
+  assistant: |
+    Corré la suite de aceptación:
+
+    ```bash
+    ./build.ps1 verify      # desde el host Windows
+    ./build.ps1 test-unit
+    ```
+
+    La referencia es `reports/verify-ronin-final-20261123.json`: **67 PASS / 0 WARN / 0 FAIL** en la PC real. Para hardware, además:
+
+    ```bash
+    jq '{schema,board,cpu,gpus,profile,actions}' /var/log/hw-adapt-last.json
+    systemctl is-enabled docker ollama NetworkManager hw-adapt sshd sddm ufw
+    ```
+
+    Fuente: `README.md`, `docs/04-VERIFICATION.md`.
+  tags: [ronin, verificacion]
+
+- id: ronin-migracion
+  user: "¿Cómo se migra Ronin al NVMe externo de 1 TB?"
+  assistant: |
+    Se usa `/root/build-scripts/migrate-to-nvme.sh` con tabla final:
+
+    1. `DATOS` exFAT (~500 GiB, primera).
+    2. `ESP` FAT32 (4 GiB, clon de la EFI).
+    3. `ROOT` Btrfs (resto, clon de `CACHY_ROOT` + `btrfs filesystem resize max /`).
+
+    Se preservan UUIDs para no tocar `fstab` ni el bootloader. El script pide confirmación por modelo de disco y tiene `--dry-run`.
+
+    Fuente: `PROJECT.md`, `docs/03-RUNBOOK-MIGRATION.md`.
+  tags: [ronin, migracion, nvme]
+
+- id: ronin-cifrado
+  user: "¿Ronin tiene cifrado de disco?"
+  assistant: |
+    En el MVP **no**. La especificación original no lo incluye y el ADR-007 deja LUKS2 como decisión pendiente para post-MVP. Para un dispositivo portable eso es un riesgo alto (pérdida/robo).
+
+    Si lo agregás, hacelo con backup y un runbook de recuperación; no improvises `cryptsetup` sobre el disco en uso.
+
+    Fuente: `README.md`, `docs/05-ADRS.md#adr-007`.
+  tags: [ronin, seguridad, luks]
+
+- id: ronin-pacman
+  user: "¿Qué comandos de pacman necesito para administrar Ronin?"
+  assistant: |
+    ```bash
+    sudo pacman -Syu                 # actualizar todo
+    pacman -Q | wc -l                # paquetes instalados
+    pacman -Qo /usr/bin/rg           # dueño de un archivo
+    pacman -Ql <paquete>             # archivos de un paquete
+    pacman -Qi <paquete>             # info
+    pacman -Qdtq | sudo pacman -Rns -  # huérfanos (revisar antes)
+    sudo pacman -S --needed <paquete>
+    ```
+
+    Repos `x86-64-v3` y microcódigo AMD + Intel instalados. Si una actualización pide reinicio por kernel, no sigas instalando paquetes.
+
+    Fuente: Arch Wiki `pacman`; `PROJECT.md`.
+  tags: [arch, pacman]
+
+- id: ronin-systemd
+  user: "Un servicio de Ronin falla al arrancar. ¿Cuál es el triage correcto?"
+  assistant: |
+    ```bash
+    systemctl --failed
+    systemctl status <servicio> --no-pager -l
+    journalctl -u <servicio> -b -n 100 --no-pager
+    systemd-analyze blame | head -20
+    ```
+
+    Leé primero el primer error, no el último. Si el unit fue modificado, compará con `systemctl cat <servicio>`. Después de corregir:
+
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl restart <servicio>
+    systemctl status <servicio> --no-pager
+    ```
+
+    Fuente: Arch Wiki `systemd`, `Systemd/Journal`.
+  tags: [arch, systemd, troubleshooting]
+
+- id: ronin-btrfs-snapshots
+  user: "¿Cómo listo y restauro snapshots Btrfs en Ronin?"
+  assistant: |
+    ```bash
+    sudo snapper -c root list
+    sudo btrfs subvolume list /
+    sudo snapper -c root create --description "antes de cambiar X"
+    ```
+
+    Para restaurar, no borres el subvolumen en caliente: usá `snapper rollback` desde un entorno de recuperación o seguí el runbook de Omarchy/Ronin. Antes de tocar snapshots, verificá espacio:
+
+    ```bash
+    sudo btrfs filesystem usage /
+    sudo snapper -c root list
+    ```
+
+    Fuente: Arch Wiki `Snapper`, `Btrfs/Subvolumes`; `PROJECT.md`.
+  tags: [arch, btrfs, snapper]
+
+- id: ronin-ssh
+  user: "¿Cómo endurezco SSH en Ronin sin quedarme afuera?"
+  assistant: |
+    Primero probá la conexión nueva en otra sesión. Luego:
+
+    ```bash
+    sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+    sudo sshd -t
+    sudo systemctl reload sshd
+    ```
+
+    Reglas: `PermitRootLogin no`, `PasswordAuthentication no`, solo claves, `AllowUsers davosoler`, y UFW limitando el puerto. No cierres la sesión actual hasta validar el acceso con una segunda terminal.
+
+    Fuente: Arch Wiki `OpenSSH`, `SSH_keys`; `README.md` (root SSH deshabilitado).
+  tags: [arch, ssh, hardening]
+
+- id: ronin-ufw
+  user: "¿Cómo reviso el firewall de Ronin?"
+  assistant: |
+    ```bash
+    sudo ufw status verbose
+    sudo ufw numbered
+    sudo ss -tulpn
+    ```
+
+    Para abrir solo lo necesario: `sudo ufw allow 22/tcp` (o un puerto no estándar), y `sudo ufw enable`. Si tocás reglas por SSH, dejá la sesión abierta y probá desde otra antes de cerrar.
+
+    Fuente: `PROJECT.md` (UFW habilitado), Arch Wiki `Uncomplicated_Firewall`.
+  tags: [arch, firewall, ufw]
+
+- id: ronin-hyprland
+  user: "¿Dónde se configura el hardware dinámico de Hyprland en Ronin?"
+  assistant: |
+    En `~/.config/hypr/hardware-auto.lua`, generado por `hw-adapt.sh`, y se incluye desde la config de Hyprland con `source = ~/.config/hypr/hardware-auto.lua`. No edites ese archivo a mano si vas a volver a correr `hw-adapt`: cambiá `/etc/hw-adapt.conf` o el script.
+
+    ```bash
+    hyprctl monitors
+    hyprctl systeminfo
+    cat ~/.config/hypr/hardware-auto.lua
+    ```
+
+    Fuente: `PROJECT.md`, `docs/01-ARCHITECTURE.md`.
+  tags: [ronin, hyprland, omarchy]
+
+- id: ronin-docker
+  user: "¿Cómo está configurado Docker en Ronin?"
+  assistant: |
+    `docker.service` habilitado, usuario en el grupo `docker`, y `/var/lib/docker` en el subvolumen `@docker` con `chattr +C` para evitar CoW en capas. Verificá:
+
+    ```bash
+    systemctl is-enabled docker
+    docker info --format '{{.Driver}} {{.DockerRootDir}}'
+    docker run --rm hello-world
+    ```
+
+    Si `docker` pide sudo, tu sesión no tomó el grupo: cerrá sesión y volvé a entrar.
+
+    Fuente: `PROJECT.md`, `docs/01-ARCHITECTURE.md`.
+  tags: [ronin, docker]
+
+- id: ronin-kensei
+  user: "¿Dónde vive Kensei y cómo lo ejecuto en Ronin?"
+  assistant: |
+    Kensei vive en `kensei/` dentro del repo `work-os`. El flujo es:
+
+    ```bash
+    cd ~/orca/projects/work-os/kensei
+    uv sync
+    uv run kensei doctor
+    uv run kensei chat --model kensei --execute
+    ```
+
+    El modelo se sirve con Ollama; el corpus y los pesos no se versionan. Sin `~/.config/kensei/scope.yaml` autorizado, Kensei no ejecuta comandos de red.
+
+    Fuente: `kensei/README.md`.
+  tags: [kensei, ronin]
+
+- id: ronin-whpx
+  user: "El guest de QEMU se congela después del reboot. ¿Qué hago?"
+  assistant: |
+    Es un hallazgo conocido de Ronin: WHPX congeló el guest instalado (kernel 7.3.3) tras el reboot. `build.env` usa `VM_ACCEL=tcg` por defecto: más lento, pero estable.
+
+    ```bash
+    grep VM_ACCEL build/build.env
+    ./build.ps1 up-iso
+    ```
+
+    No cambies a WHPX para "ganar velocidad" sin validar un boot completo y un reboot. Fuente: `README.md`, `docs/08-BUILD-LOG.md`.
+  tags: [ronin, qemu, whpx]

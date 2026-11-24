@@ -1,0 +1,55 @@
+# Hiperparámetros de referencia para Kensei QLoRA.
+# El script train_qlora.py usa estos valores como defaults; el YAML documenta la receta.
+base_model: "Qwen/Qwen2.5-Coder-7B-Instruct"
+
+# Variante opcional (abliterada, Apache-2.0). Cambiar base_model si se usa.
+abliterated_model: "Goekdeniz-Guelmez/Josiefied-Qwen2.5-Coder-7B-Instruct-abliterated-v1"
+
+method: qlora
+load_in_4bit: true
+max_seq_length: 4096
+dtype: null
+
+lora:
+  r: 32
+  alpha: 64
+  dropout: 0.05
+  bias: none
+  use_rslora: true
+  # Variantes (ver docs/ALTERNATIVAS-LORA.md):
+  # use_dora: true          # DoRA: mejor calidad a igual rank, algo más de overhead
+  # init_lora_weights: pissa_niter_16  # PiSSA/QPiSSA: mejor convergencia
+  use_dora: false
+  init_lora_weights: true
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  epochs: 2
+  learning_rate: 1.0e-4
+  batch_size: 2
+  gradient_accumulation_steps: 8
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  lr_scheduler_type: cosine
+  logging_steps: 10
+  save_steps: 200
+  save_total_limit: 2
+  packing: false
+  seed: 3407
+  optim: "adamw_8bit"
+
+output_dir: "models/kensei-qwen2.5-coder-7b-lora"
+dataset: "data/derived/sft.jsonl"
+val_dataset: "data/derived/sft.val.jsonl"
+
+# Hardware esperado:
+# - NVIDIA >= 16 GB VRAM: QLoRA 7B con seq 4096 y batch 2 + grad accum 8.
+# - AMD ROCm: usar Axolotl (config/axolotl.yml), no Unsloth.
+# - Sin GPU: no entrenar 7B; usar 1.5B o alquilar una GPU.

@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Datos y modelos: nunca versionar corpus ni pesos
+data/raw/
+data/derived/
+models/
+out/
+reports/*.json
+reports/*.jsonl
+
+# Pesos y artefactos
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+
+# Secretos locales
+.env
+scope.yaml

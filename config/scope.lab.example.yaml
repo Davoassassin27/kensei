@@ -1,0 +1,29 @@
+# Copiar a ~/.config/kensei/scope.yaml (o pasar --scope).
+# Ejemplo conservador para un laboratorio o CTF.
+# Sin authorized: true, Kensei rechaza todo comando de red.
+engagement: "home-lab"
+authorized: true
+
+# Targets permitidos. Un comando que toque un target fuera de esta lista se bloquea.
+targets:
+  cidrs:
+    - "192.168.56.0/24"
+    - "10.10.10.0/24"
+  domains:
+    - "lab.local"
+    - "*.htb"
+  urls:
+    - "http://localhost:3000"
+
+# Denegación explícita: gana sobre targets.
+deny:
+  cidrs:
+    - "10.10.10.66/32"
+  domains:
+    - "*.gov"
+    - "*.mil"
+
+# Notas para el operador (no se usan para decidir, se muestran en auditoría).
+notes: |
+  Laboratorio local: VMs en 192.168.56.0/24 y máquinas HTB en 10.10.10.0/24.
+  Autorización: entorno propio / CTF. No usar contra terceros.

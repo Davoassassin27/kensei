@@ -1,0 +1,59 @@
+# QLoRA 7B para 12 GB de VRAM (RX 6700 XT) — Linux + ROCm.
+# Es una receta conservadora: si OOM, bajá max_seq_length a 1536 o r a 8.
+# Probar primero 1.000–2.000 ejemplos y 1 época antes de la corrida completa.
+
+base_model: "Qwen/Qwen2.5-Coder-7B-Instruct"
+
+method: qlora
+load_in_4bit: true
+max_seq_length: 2048
+dtype: null
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  bias: none
+  use_rslora: true
+  # DoRA: probar después de la baseline; agrega overhead.
+  use_dora: false
+  # PiSSA: requiere inicialización SVD; no combinar con DoRA a ciegas.
+  init_lora_weights: true
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  epochs: 1
+  learning_rate: 1.0e-4
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  lr_scheduler_type: cosine
+  logging_steps: 10
+  save_steps: 100
+  save_total_limit: 2
+  packing: false
+  seed: 3407
+  optim: "paged_adamw_8bit"
+
+output_dir: "models/kensei-qwen2.5-coder-7b-lora-12gb"
+dataset: "data/derived/sft.jsonl"
+val_dataset: "data/derived/sft.val.jsonl"
+
+# Hardware: AMD RX 6700 XT 12 GB, Ryzen 7 5700X, 32 GB RAM.
+# Requisitos: Linux (CachyOS/Ronin), PyTorch ROCm, bitsandbytes ROCm.
+# Si bitsandbytes no funciona en ROCm:
+#   - usar LoRA 16-bit no entra en 12 GB para 7B;
+#   - usar 1.5B, o entrenar en cloud (T4/A100) y volver a inferir local.
+#
+# Primer smoke:
+#   uv run python scripts/train_qlora.py \
+#     --config config/train_qlora_12gb.yaml \
+#     --limit 500 --max-steps 50 --output-dir models/smoke-12gb

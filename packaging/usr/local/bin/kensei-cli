@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# kensei-cli — CLI Python de Kensei, instalada en /usr/local/lib/kensei.
+set -Eeuo pipefail
+
+PREFIX="${KENSEI_PREFIX:-/usr/local}"
+export KENSEI_HOME="${KENSEI_HOME:-$PREFIX/lib/kensei}"
+DATA_DIR="${KENSEI_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/kensei}"
+export KENSEI_DATA_DIR="$DATA_DIR"
+export PYTHONPATH="$KENSEI_HOME/src${PYTHONPATH:+:$PYTHONPATH}"
+mkdir -p "$DATA_DIR"
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "kensei-cli: falta python3" >&2
+  exit 127
+fi
+exec python3 -m kensei "$@"

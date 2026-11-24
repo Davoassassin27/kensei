@@ -1,0 +1,60 @@
+# Alternativa portable a Unsloth (CUDA y ROCm).
+# Requiere Axolotl instalado en un entorno Linux. Ajustar versiones si cambia el schema.
+base_model: Qwen/Qwen2.5-Coder-7B-Instruct
+model_type: Qwen2ForCausalLM
+tokenizer_type: AutoTokenizer
+
+load_in_4bit: true
+strict: false
+
+datasets:
+  - path: data/derived/sft.jsonl
+    type: chat_template
+    field_messages: messages
+    message_property_mappings:
+      role: role
+      content: content
+    roles_to_train: ["assistant"]
+    train_on_eos: "turn"
+
+val_set_size: 0.02
+output_dir: models/kensei-qwen2.5-coder-7b-axolotl
+
+sequence_len: 4096
+sample_packing: false
+pad_to_sequence_len: true
+
+adapter: lora
+lora_r: 32
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+gradient_accumulation_steps: 8
+micro_batch_size: 2
+num_epochs: 2
+optimizer: adamw_bnb_8bit
+lr_scheduler: cosine
+learning_rate: 0.0001
+warmup_ratio: 0.03
+weight_decay: 0.01
+
+bf16: auto
+tf32: false
+gradient_checkpointing: true
+logging_steps: 10
+save_steps: 200
+save_total_limit: 2
+seed: 3407
+
+wandb_project:
+wandb_entity:
+wandb_watch:
+wandb_name:

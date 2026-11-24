@@ -1,0 +1,19 @@
+# Kensei — modelo local de Ronin
+# Generado por scripts/export_gguf.py. Requiere models/kensei-Q4_K_M.gguf.
+# Crear con: ollama create kensei -f modelfiles/Kensei.Modelfile
+
+FROM ../models/kensei-Q4_K_M.gguf
+
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER num_ctx 8192
+PARAMETER repeat_penalty 1.05
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+"""

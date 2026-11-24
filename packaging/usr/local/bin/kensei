@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# kensei — entrada a la shell/TUI de Ronin.
+# Sin argumentos abre zsh con ghost autocomplete y prompt Kensei.
+# Con argumentos delega al CLI: `kensei <prompt>` o `kensei --auto <prompt>`.
+set -Eeuo pipefail
+
+PREFIX="${KENSEI_PREFIX:-/usr/local}"
+ZSH_DIR="${KENSEI_ZDOTDIR:-$PREFIX/share/kensei/zsh}"
+CLI="$PREFIX/bin/kensei-cli"
+ROOT_SHELL=0
+
+while (( $# )); do
+  case "$1" in
+    --root)
+      ROOT_SHELL=1
+      shift
+      ;;
+    --no-anim)
+      export KENSEI_NO_ANIM=1
+      shift
+      ;;
+    --help|-h|--version)
+      exec "$CLI" "$@"
+      ;;
+    --auto)
+      shift
+      if (( $# == 0 )); then
+        read -r -p "kensei(auto)› " prompt
+        [[ -n "${prompt:-}" ]] || exit 1
+      else
+        prompt="$*"
+      fi
+      exec "$CLI" auto "$prompt" --allow-code-blocks
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "kensei: opción desconocida: $1 (usá 'kensei --help')" >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if (( $# > 0 )); then
+  exec "$CLI" ask "$*" --allow-code-blocks
+fi
+
+if ! command -v zsh >/dev/null 2>&1; then
+  echo "kensei: falta zsh." >&2
+  echo "  Arch/CachyOS: sudo pacman -S zsh zsh-autosuggestions zsh-syntax-highlighting zsh-completions" >&2
+  exit 1
+fi
+
+export KENSEI_PREFIX="$PREFIX"
+export KENSEI_ZDOTDIR="$ZSH_DIR"
+export ZDOTDIR="$ZSH_DIR"
+export KENSEI_SHELL_BANNER=1
+if (( ROOT_SHELL )); then
+  if [[ ${EUID} -eq 0 ]]; then
+    exec env KENSEI_ROOT=1 ZDOTDIR="$ZSH_DIR" zsh -d -i
+  fi
+  exec sudo -E env \
+    "KENSEI_PREFIX=$PREFIX" \
+    "KENSEI_ZDOTDIR=$ZSH_DIR" \
+    "ZDOTDIR=$ZSH_DIR" \
+    "KENSEI_SHELL_BANNER=1" \
+    "KENSEI_ROOT=1" \
+    zsh -d -i
+fi
+
+exec env KENSEI_ROOT=0 ZDOTDIR="$ZSH_DIR" zsh -d -i

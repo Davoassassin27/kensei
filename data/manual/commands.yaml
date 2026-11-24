@@ -1,0 +1,468 @@
+# Recetas de terminal verificadas para generar tool-traces de Kensei.
+# Cada entrada produce una traza dry-run (no se ejecuta nada).
+# Campos: task, tool (shell|read_file|http_get|recall), cmd/path/url/query, risk, tags.
+# Mantener comandos cortos, reales y con targets de laboratorio.
+
+- task: "Ver la versión del kernel"
+  tool: shell
+  cmd: "uname -r"
+  risk: low
+  tags: [arch, kernel]
+
+- task: "Ver la distro y la versión"
+  tool: read_file
+  path: "/etc/os-release"
+  risk: low
+  tags: [arch, ronin]
+
+- task: "Listar los servicios systemd que fallaron"
+  tool: shell
+  cmd: "systemctl --failed --no-pager"
+  risk: low
+  tags: [arch, systemd]
+
+- task: "Ver el estado detallado de sshd"
+  tool: shell
+  cmd: "systemctl status sshd --no-pager -l"
+  risk: low
+  tags: [arch, systemd, ssh]
+
+- task: "Leer los últimos logs de sshd en el boot actual"
+  tool: shell
+  cmd: "journalctl -u sshd -b -n 100 --no-pager"
+  risk: low
+  tags: [arch, journal, ssh]
+
+- task: "Ver solo los errores del boot actual"
+  tool: shell
+  cmd: "journalctl -p err -b --no-pager"
+  risk: low
+  tags: [arch, journal]
+
+- task: "Ver qué servicios tardan más en arrancar"
+  tool: shell
+  cmd: "systemd-analyze blame | head -20"
+  risk: low
+  tags: [arch, systemd, boot]
+
+- task: "Saber a qué paquete pertenece /usr/bin/rg"
+  tool: shell
+  cmd: "pacman -Qo /usr/bin/rg"
+  risk: low
+  tags: [arch, pacman]
+
+- task: "Ver la información del paquete ripgrep"
+  tool: shell
+  cmd: "pacman -Qi ripgrep"
+  risk: low
+  tags: [arch, pacman]
+
+- task: "Listar paquetes huérfanos"
+  tool: shell
+  cmd: "pacman -Qdtq"
+  risk: low
+  tags: [arch, pacman]
+
+- task: "Ver actualizaciones pendientes sin instalar nada"
+  tool: shell
+  cmd: "checkupdates"
+  risk: low
+  tags: [arch, pacman, updates]
+
+- task: "Actualizar todo el sistema"
+  tool: shell
+  cmd: "sudo pacman -Syu"
+  risk: medium
+  tags: [arch, pacman, updates]
+
+- task: "Listar los snapshots de snapper"
+  tool: shell
+  cmd: "sudo snapper -c root list"
+  risk: low
+  tags: [arch, btrfs, snapper]
+
+- task: "Crear un snapshot antes de actualizar"
+  tool: shell
+  cmd: 'sudo snapper -c root create --description "pre-update"'
+  risk: medium
+  tags: [arch, btrfs, snapper]
+
+- task: "Listar los subvolúmenes Btrfs"
+  tool: shell
+  cmd: "sudo btrfs subvolume list /"
+  risk: low
+  tags: [arch, btrfs]
+
+- task: "Ver el uso de espacio del filesystem Btrfs"
+  tool: shell
+  cmd: "sudo btrfs filesystem usage /"
+  risk: low
+  tags: [arch, btrfs]
+
+- task: "Ver el dispositivo y las opciones de montaje de la raíz"
+  tool: shell
+  cmd: "findmnt -no SOURCE,OPTIONS /"
+  risk: low
+  tags: [arch, storage]
+
+- task: "Listar discos, particiones y filesystems"
+  tool: shell
+  cmd: "lsblk -f"
+  risk: low
+  tags: [arch, storage]
+
+- task: "Ver el espacio libre por filesystem"
+  tool: shell
+  cmd: "df -hT"
+  risk: low
+  tags: [arch, storage]
+
+- task: "Ver qué directorios ocupan más espacio en la raíz"
+  tool: shell
+  cmd: "sudo du -xhd1 / | sort -h | tail -20"
+  risk: low
+  tags: [arch, storage]
+
+- task: "Ver el estado de zram"
+  tool: shell
+  cmd: "zramctl"
+  risk: low
+  tags: [ronin, zram, memoria]
+
+- task: "Ver el swap activo"
+  tool: shell
+  cmd: "swapon --show"
+  risk: low
+  tags: [arch, memoria]
+
+- task: "Ver memoria RAM y swap"
+  tool: shell
+  cmd: "free -h"
+  risk: low
+  tags: [arch, memoria]
+
+- task: "Ver puertos TCP y UDP escuchando"
+  tool: shell
+  cmd: "ss -tulpn"
+  risk: low
+  tags: [arch, red]
+
+- task: "Ver interfaces de red y sus IPs"
+  tool: shell
+  cmd: "ip -br a"
+  risk: low
+  tags: [arch, red]
+
+- task: "Ver la tabla de rutas"
+  tool: shell
+  cmd: "ip route"
+  risk: low
+  tags: [arch, red]
+
+- task: "Ver el estado de DNS"
+  tool: shell
+  cmd: "resolvectl status"
+  risk: low
+  tags: [arch, red, dns]
+
+- task: "Ver el estado del firewall UFW"
+  tool: shell
+  cmd: "sudo ufw status verbose"
+  risk: low
+  tags: [arch, firewall, ufw]
+
+- task: "Listar las reglas de nftables"
+  tool: shell
+  cmd: "sudo nft list ruleset"
+  risk: low
+  tags: [arch, firewall, nft]
+
+- task: "Auditar la configuración efectiva de SSH"
+  tool: shell
+  cmd: "sudo sshd -T | grep -Ei 'permitrootlogin|passwordauthentication|allowusers'"
+  risk: low
+  tags: [arch, ssh, hardening]
+
+- task: "Regenerar el initramfs después de cambiar mkinitcpio"
+  tool: shell
+  cmd: "sudo mkinitcpio -P"
+  risk: medium
+  tags: [arch, boot, initramfs]
+
+- task: "Ver el estado del bootloader systemd-boot"
+  tool: shell
+  cmd: "bootctl status"
+  risk: low
+  tags: [arch, boot]
+
+- task: "Recargar los units de systemd después de editarlos"
+  tool: shell
+  cmd: "sudo systemctl daemon-reload"
+  risk: medium
+  tags: [arch, systemd]
+
+- task: "Reiniciar nginx después de validar la configuración"
+  tool: shell
+  cmd: "sudo systemctl restart nginx"
+  risk: medium
+  tags: [arch, systemd, nginx]
+
+- task: "Ver cuánto espacio usa Docker"
+  tool: shell
+  cmd: "docker system df"
+  risk: low
+  tags: [docker, storage]
+
+- task: "Listar contenedores Docker con su estado"
+  tool: shell
+  cmd: "docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'"
+  risk: low
+  tags: [docker]
+
+- task: "Ver consumo de CPU y memoria de contenedores"
+  tool: shell
+  cmd: "docker stats --no-stream"
+  risk: low
+  tags: [docker]
+
+- task: "Listar contenedores Podman, incluidos los detenidos"
+  tool: shell
+  cmd: "podman ps -a"
+  risk: low
+  tags: [podman]
+
+- task: "Listar sesiones de tmux"
+  tool: shell
+  cmd: "tmux ls"
+  risk: low
+  tags: [terminal, tmux]
+
+- task: "Ver el estado corto del repo git"
+  tool: shell
+  cmd: "git status --short"
+  risk: low
+  tags: [git]
+
+- task: "Ver los últimos diez commits"
+  tool: shell
+  cmd: "git log --oneline -10"
+  risk: low
+  tags: [git]
+
+- task: "Buscar la palabra kensei en el proyecto"
+  tool: shell
+  cmd: 'rg -n "kensei" .'
+  risk: low
+  tags: [terminal, ripgrep]
+
+- task: "Buscar archivos Python en el proyecto"
+  tool: shell
+  cmd: "fd -e py"
+  risk: low
+  tags: [terminal, fd]
+
+- task: "Listar los nombres de modelos de una respuesta JSON de Ollama"
+  tool: shell
+  cmd: "curl -s http://127.0.0.1:11434/api/tags | jq -r '.models[].name'"
+  risk: low
+  tags: [ollama, jq]
+
+- task: "Ver un archivo con números de línea y sintaxis"
+  tool: shell
+  cmd: "bat /etc/os-release"
+  risk: low
+  tags: [terminal, bat]
+
+- task: "Ver los procesos que más CPU consumen"
+  tool: shell
+  cmd: "ps -eo pid,ppid,pcpu,pmem,comm --sort=-pcpu | head -15"
+  risk: low
+  tags: [arch, procesos]
+
+- task: "Ver qué proceso escucha en el puerto 11434"
+  tool: shell
+  cmd: "lsof -i :11434"
+  risk: low
+  tags: [arch, red, ollama]
+
+- task: "Capturar veinte paquetes DNS en cualquier interfaz"
+  tool: shell
+  cmd: "sudo tcpdump -i any -c 20 port 53"
+  risk: medium
+  tags: [red, tcpdump]
+
+- task: "Descubrir hosts vivos en el laboratorio 192.168.56.0/24"
+  tool: shell
+  cmd: "nmap -sn 192.168.56.0/24"
+  risk: medium
+  tags: [lab, red, nmap]
+
+- task: "Escanear servicios del host de laboratorio 192.168.56.10"
+  tool: shell
+  cmd: "nmap -sV -sC -p- 192.168.56.10 -oA lab-scan"
+  risk: high
+  tags: [lab, red, nmap]
+
+- task: "Escanear SMB en el target de CTF 10.10.10.5"
+  tool: shell
+  cmd: "nmap -sV -p139,445 10.10.10.5"
+  risk: medium
+  tags: [lab, ctf, smb, nmap]
+
+- task: "Listar los shares SMB anónimos de 10.10.10.5"
+  tool: shell
+  cmd: "smbclient -L //10.10.10.5/ -N"
+  risk: medium
+  tags: [lab, ctf, smb]
+
+- task: "Enumerar shares y sesión guest en 10.10.10.5"
+  tool: shell
+  cmd: "netexec smb 10.10.10.5 -u '' -p '' --shares"
+  risk: high
+  tags: [lab, ctf, smb]
+
+- task: "Consultar el directorio LDAP del dominio lab.local"
+  tool: shell
+  cmd: "ldapsearch -x -H ldap://10.10.10.10 -b 'dc=lab,dc=local'"
+  risk: medium
+  tags: [lab, ad, ldap]
+
+- task: "Pedir tickets de servicio para Kerberoasting en lab.local"
+  tool: shell
+  cmd: "impacket-GetUserSPNs lab.local/user:pass -dc-ip 10.10.10.10 -request"
+  risk: high
+  tags: [lab, ad, kerberoasting]
+
+- task: "Crackear un ticket Kerberos RC4 de laboratorio"
+  tool: shell
+  cmd: "hashcat -m 13100 -a 0 ticket.txt /usr/share/wordlists/rockyou.txt"
+  risk: high
+  tags: [lab, hashes, hashcat]
+
+- task: "Crackear un hash de laboratorio con John"
+  tool: shell
+  cmd: "john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt"
+  risk: high
+  tags: [lab, hashes, john]
+
+- task: "Confirmar SQLi en la app local con sqlmap"
+  tool: shell
+  cmd: "sqlmap -u 'http://localhost:3000/item?id=1' --batch --level=1 --risk=1 --dbs"
+  risk: high
+  tags: [lab, web, sqli]
+
+- task: "Fuzzear rutas de la app de laboratorio"
+  tool: shell
+  cmd: "ffuf -w /usr/share/seclists/Discovery/Web-Content/common.txt -u http://lab.local:3000/FUZZ"
+  risk: high
+  tags: [lab, web, ffuf]
+
+- task: "Enumerar directorios de la app de laboratorio con gobuster"
+  tool: shell
+  cmd: "gobuster dir -u http://lab.local:3000 -w /usr/share/seclists/Discovery/Web-Content/common.txt"
+  risk: high
+  tags: [lab, web, gobuster]
+
+- task: "Escanear la app de laboratorio con nuclei en severidad baja y media"
+  tool: shell
+  cmd: "nuclei -u http://lab.local:3000 -severity low,medium"
+  risk: high
+  tags: [lab, web, nuclei]
+
+- task: "Ver solo los headers HTTP de la app de laboratorio"
+  tool: shell
+  cmd: "curl -sSI http://lab.local:3000"
+  risk: low
+  tags: [lab, web, curl]
+
+- task: "Consultar el health check de la app de laboratorio"
+  tool: http_get
+  url: "http://lab.local:3000/api/health"
+  risk: low
+  tags: [lab, web, http]
+
+- task: "Fingerprintear tecnologías de la app de laboratorio"
+  tool: shell
+  cmd: "whatweb http://lab.local:3000"
+  risk: medium
+  tags: [lab, web, whatweb]
+
+- task: "Buscar binarios SUID en el sistema"
+  tool: shell
+  cmd: "find / -xdev -perm -4000 -type f 2>/dev/null"
+  risk: low
+  tags: [lab, privesc, suid]
+
+- task: "Buscar capabilities peligrosas"
+  tool: shell
+  cmd: "getcap -r / 2>/dev/null"
+  risk: low
+  tags: [lab, privesc, capabilities]
+
+- task: "Ver qué comandos puede ejecutar el usuario con sudo"
+  tool: shell
+  cmd: "sudo -l"
+  risk: low
+  tags: [lab, privesc, sudo]
+
+- task: "Ver la identidad y los grupos del usuario"
+  tool: shell
+  cmd: "id"
+  risk: low
+  tags: [lab, privesc]
+
+- task: "Ver la versión completa del kernel"
+  tool: shell
+  cmd: "uname -a"
+  risk: low
+  tags: [arch, kernel]
+
+- task: "Ver los permisos del binario /usr/bin/find"
+  tool: shell
+  cmd: "ls -l /usr/bin/find"
+  risk: low
+  tags: [lab, privesc, gtfobins]
+
+- task: "Ver los últimos logins del sistema"
+  tool: shell
+  cmd: "sudo last -n 20"
+  risk: low
+  tags: [arch, auditoría]
+
+- task: "Ver los usuarios conectados"
+  tool: shell
+  cmd: "who"
+  risk: low
+  tags: [arch, auditoría]
+
+- task: "Ver el estado de AppArmor"
+  tool: shell
+  cmd: "sudo aa-status"
+  risk: low
+  tags: [arch, hardening, apparmor]
+
+- task: "Auditar el hardening del sistema con lynis"
+  tool: shell
+  cmd: "lynis audit system"
+  risk: medium
+  tags: [arch, hardening, lynis]
+
+- task: "Auditar la configuración SSH local con ssh-audit"
+  tool: shell
+  cmd: "ssh-audit localhost"
+  risk: low
+  tags: [arch, ssh, hardening]
+
+- task: "Buscar en la memoria local cómo se hace un snapshot Btrfs"
+  tool: recall
+  query: "btrfs snapshot subvolume snapper"
+  k: 4
+  risk: low
+  tags: [rag, btrfs]
+
+- task: "Buscar en la memoria local técnicas de Kerberoasting"
+  tool: recall
+  query: "kerberoasting"
+  k: 5
+  risk: low
+  tags: [rag, ad]

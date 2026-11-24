@@ -1,0 +1,81 @@
+# Fuentes de Kensei. Cada entrada declara licencia y cómo se obtiene.
+# Los datos viven en data/raw/<source>/ y NO se versionan.
+version: 1
+
+sources:
+  archwiki:
+    kind: archwiki
+    license: GFDL-1.3-or-later
+    url: https://wiki.archlinux.org
+    pages_file: config/archwiki-pages.txt
+    api: https://wiki.archlinux.org/api.php
+    # La API entrega HTML parseado; se convierte a texto con code fences.
+    mode: parse
+    note: >
+      Alternativa offline: paquete arch-wiki-docs de los repos de CachyOS.
+      La API se usa para tener texto limpio y páginas curadas.
+
+# Los repos git usan sparse checkout (solo los `include`) y core.longpaths.
+# Requiere git >= 2.25; en Windows evita el fallo de MAX_PATH de HackTricks.
+
+  hacktricks:
+    kind: git
+    repo: https://github.com/HackTricks-wiki/hacktricks.git
+    ref: master
+    license: CC-BY-NC-4.0
+    include:
+      - src/**/*.md
+    exclude:
+      - src/translations/**
+      - src/images/**
+      - src/banners/**
+    note: >
+      Licencia no comercial. Uso privado en Ronin; no redistribuir el dataset
+      ni pesos derivados sin revisar la licencia.
+
+  payloads:
+    kind: git
+    repo: https://github.com/swisskyrepo/PayloadsAllTheThings.git
+    ref: master
+    license: MIT
+    include:
+      - "**/*.md"
+    exclude:
+      - .github/**
+      - "**/Files/**"
+      - "**/*.png"
+      - "**/*.jpg"
+
+  thr:
+    kind: git
+    repo: https://github.com/The-Hacker-Recipes/The-Hacker-Recipes.git
+    ref: main
+    license: GPL-3.0-only
+    include:
+      - docs/src/**/*.md
+    exclude:
+      - docs/src/.vitepress/**
+
+  tldr:
+    kind: git
+    repo: https://github.com/tldr-pages/tldr.git
+    ref: main
+    license: CC-BY-4.0
+    include:
+      - pages/common/*.md
+      - pages/linux/*.md
+
+  gtfobins:
+    kind: git
+    repo: https://github.com/GTFOBins/GTFOBins.github.io.git
+    ref: master
+    license: GPL-3.0-only
+    include:
+      - _gtfobins/*
+
+  manual:
+    kind: local
+    path: data/manual
+    license: MIT
+    note: >
+      Q&A curado de Ronin y seguridad. Se indexa en RAG y se usa en SFT.

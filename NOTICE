@@ -1,0 +1,33 @@
+# NOTICE — fuentes de datos de Kensei
+
+El código de Kensei es **MIT** (ver `LICENSE`). La documentación y los assets de
+marca se publican bajo **CC BY 4.0** (ver `LICENSE-DOCS`). Atribución:
+"Kensei — https://github.com/Davoassassin27/kensei".
+
+El corpus de entrenamiento **no se distribuye** con este repositorio: se
+descarga desde las fuentes originales con `scripts/fetch_sources.py`. Cada
+documento conserva su licencia en `data/derived/documents.jsonl`. Los pesos
+fine-tune, adapters LoRA y modelos GGUF tampoco se versionan.
+
+| Fuente | Licencia | Atribución |
+| --- | --- | --- |
+| Arch Wiki | GFDL-1.3-or-later | https://wiki.archlinux.org |
+| HackTricks | CC BY-NC 4.0 | https://github.com/HackTricks-wiki/hacktricks |
+| PayloadsAllTheThings | MIT | https://github.com/swisskyrepo/PayloadsAllTheThings |
+| The Hacker Recipes | GPL-3.0-only | https://github.com/The-Hacker-Recipes/The-Hacker-Recipes |
+| tldr-pages | CC-BY-4.0 | https://github.com/tldr-pages/tldr |
+| GTFOBins | GPL-3.0-only | https://github.com/GTFOBins/GTFOBins.github.io |
+| Manual Ronin / seguridad | MIT (propio) | `data/manual/` |
+
+## Advertencia
+
+- **HackTricks es no comercial (CC BY-NC 4.0).** No uses el corpus combinado ni
+  pesos derivados en un producto comercial sin revisión legal.
+- **GPL-3.0** (THR, GTFOBins) y **GFDL-1.3** (Arch Wiki) imponen obligaciones de
+  atribución/copyleft sobre obras derivadas.
+- El adapter LoRA entrenado con este corpus se considera privado. Publicarlo
+  requiere revisar las licencias anteriores.
+- El modelo base `Qwen/Qwen2.5-Coder-7B-Instruct` es Apache-2.0.
+- Las páginas de tldr y Arch Wiki se citan con URL en los ejemplos generados.
+
+Para más detalle: `docs/DATASETS.md` y `docs/SAFETY.md`.
