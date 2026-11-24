@@ -99,7 +99,7 @@ La shell zsh no corre en Windows. Para el host de desarrollo hay un shim PowerSh
 copy kensei\packaging\windows\kensei.cmd  $env:USERPROFILE\.local\bin\
 copy kensei\packaging\windows\kensei.ps1  $env:USERPROFILE\.local\bin\
 # indicar el repo si no está en kensei/packaging/windows
-setx KENSEI_ROOT "C:\Users\davos\orca\projects\work-os\kensei"
+setx KENSEI_ROOT "C:\src\kensei"
 ```
 
 Uso:
