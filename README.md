@@ -11,6 +11,7 @@ No es un chatbot que “sabe comandos”: es un harness con un bucle cerrado `ob
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776ab?style=flat-square&labelColor=111111)](pyproject.toml)
 [![Ollama](https://img.shields.io/badge/Ollama-local-111111?style=flat-square)](https://ollama.com)
 [![Tests](https://img.shields.io/badge/tests-81%20passing-2ea043?style=flat-square&labelColor=111111)](tests)
+[![ci](https://github.com/Davoassassin27/kensei/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Davoassassin27/kensei/actions/workflows/ci.yml)
 [![Status](https://img.shields.io/badge/status-v0.1.0-e6c384?style=flat-square&labelColor=111111)](#estado)
 
 > [!NOTE]
